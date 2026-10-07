@@ -1,0 +1,1220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kali Linux Interactive Sandbox & Cyber Range Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        kali: {
+                            bg: '#0c1017',
+                            panel: '#151c28',
+                            header: '#101622',
+                            accent: '#1793d1',
+                            dragon: '#2b6cb0',
+                            red: '#e53e3e',
+                            green: '#38a169',
+                            cyan: '#00b5d8',
+                            yellow: '#d69e2e',
+                            purple: '#805ad5'
+                        }
+                    },
+                    fontFamily: {
+                        mono: ['"Fira Code"', 'monospace'],
+                        sans: ['Inter', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0c1017; }
+        ::-webkit-scrollbar-thumb { background: #232d3f; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #1793d1; }
+        
+        .desktop-bg {
+            background: linear-gradient(135deg, #06090e 0%, #0d1522 50%, #04070c 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        .kali-watermark {
+            position: absolute;
+            right: -5%;
+            bottom: -10%;
+            opacity: 0.04;
+            pointer-events: none;
+            font-size: 55vw;
+            color: #1793d1;
+        }
+        .glass-panel {
+            background: rgba(21, 28, 40, 0.92);
+            backdrop-filter: blur(14px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .window {
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .window.active-window {
+            border-color: rgba(23, 147, 209, 0.6) !important;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85), 0 0 20px rgba(23, 147, 209, 0.25);
+        }
+        .scanlines::before {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+            background-size: 100% 4px;
+            z-index: 99;
+            pointer-events: none;
+            opacity: 0.6;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen overflow-hidden select-none font-sans text-gray-200 desktop-bg bg-kali-bg">
+
+    <!-- Top Taskbar (XFCE Panel) -->
+    <header class="h-9 bg-kali-header/95 border-b border-gray-800/80 flex items-center justify-between px-2 text-xs font-mono z-50 relative backdrop-blur-md">
+        <!-- Left Menu & Quick Tools -->
+        <div class="flex items-center space-x-2">
+            <div class="relative">
+                <button id="app-menu-btn" onclick="toggleAppMenu()" class="flex items-center space-x-2 bg-kali-accent/20 hover:bg-kali-accent/40 text-kali-accent px-2.5 py-1 rounded transition border border-kali-accent/30 font-semibold">
+                    <i class="fa-solid fa-dragon text-sm"></i>
+                    <span>Applications</span>
+                    <i class="fa-solid fa-chevron-down text-[10px] ml-1"></i>
+                </button>
+
+                <!-- Whisker / Applications Menu -->
+                <div id="app-menu" class="hidden absolute top-10 left-0 w-80 glass-panel rounded-lg shadow-2xl border border-gray-700/80 py-2 z-50 text-xs">
+                    <div class="px-3 py-1.5 border-b border-gray-700/50 text-gray-400 font-bold uppercase tracking-wider text-[10px] flex items-center justify-between">
+                        <span>Kali Cyber Range Tools</span>
+                        <span class="text-kali-accent">v2026.4</span>
+                    </div>
+
+                    <div class="max-h-96 overflow-y-auto py-1">
+                        <div class="px-3 py-1 text-gray-400 font-bold text-[10px] uppercase tracking-wider mt-1 text-kali-cyan">01 - Information Gathering</div>
+                        <button onclick="launchApp('terminal', 'nmap -sV 10.10.10.5')" class="w-full text-left px-4 py-1.5 hover:bg-kali-accent/20 flex items-center space-x-2">
+                            <i class="fa-solid fa-network-wired text-kali-cyan"></i>
+                            <span>Nmap Port Scanner</span>
+                        </button>
+                        <button onclick="launchApp('terminal', 'gobuster dir -u http://10.10.10.5 -w common.txt')" class="w-full text-left px-4 py-1.5 hover:bg-kali-accent/20 flex items-center space-x-2">
+                            <i class="fa-solid fa-folder-tree text-kali-cyan"></i>
+                            <span>Gobuster Directory Scanner</span>
+                        </button>
+                        <button onclick="openWireshark()" class="w-full text-left px-4 py-1.5 hover:bg-kali-accent/20 flex items-center space-x-2">
+                            <i class="fa-solid fa-network-wired text-blue-400"></i>
+                            <span>Wireshark Packet Analyzer GUI</span>
+                        </button>
+
+                        <div class="px-3 py-1 text-gray-400 font-bold text-[10px] uppercase tracking-wider mt-1 text-kali-green">02 - Vulnerability Analysis</div>
+                        <button onclick="openBurpSuite()" class="w-full text-left px-4 py-1.5 hover:bg-kali-accent/20 flex items-center space-x-2">
+                            <i class="fa-solid fa-shield-halved text-orange-400"></i>
+                            <span>Burp Suite Community Edition GUI</span>
+                        </button>
+
+                        <div class="px-3 py-1 text-gray-400 font-bold text-[10px] uppercase tracking-wider mt-1 text-kali-yellow">03 - Password & Wireless Attacks</div>
+                        <button onclick="launchApp('terminal', 'hydra -l admin -P pass.txt 10.10.10.5 ftp')" class="w-full text-left px-4 py-1.5 hover:bg-kali-accent/20 flex items-center space-x-2">
+                            <i class="fa-solid fa-key text-kali-yellow"></i>
+                            <span>Hydra Password Cracker</span>
+                        </button>
+                        <button onclick="launchApp('terminal', 'aircrack-ng -w wordlist.txt capture.cap')" class="w-full text-left px-4 py-1.5 hover:bg-kali-accent/20 flex items-center space-x-2">
+                            <i class="fa-solid fa-wifi text-purple-400"></i>
+                            <span>Aircrack-ng Wi-Fi Cracker</span>
+                        </button>
+
+                        <div class="px-3 py-1 text-gray-400 font-bold text-[10px] uppercase tracking-wider mt-1 text-kali-red">04 - Exploitation Tools</div>
+                        <button onclick="launchApp('terminal', 'msfconsole')" class="w-full text-left px-4 py-1.5 hover:bg-kali-accent/20 flex items-center space-x-2">
+                            <i class="fa-solid fa-bug text-kali-red"></i>
+                            <span>Metasploit Framework (msfconsole)</span>
+                        </button>
+
+                        <div class="px-3 py-1 text-gray-400 font-bold text-[10px] uppercase tracking-wider mt-1 text-gray-400">05 - Systems & Utilities</div>
+                        <button onclick="launchApp('terminal')" class="w-full text-left px-4 py-1.5 hover:bg-kali-accent/20 flex items-center space-x-2">
+                            <i class="fa-solid fa-terminal text-gray-300"></i>
+                            <span>Zsh Terminal</span>
+                        </button>
+                        <button onclick="openEditor()" class="w-full text-left px-4 py-1.5 hover:bg-kali-accent/20 flex items-center space-x-2">
+                            <i class="fa-solid fa-file-code text-kali-green"></i>
+                            <span>Leafpad Code & Script Editor</span>
+                        </button>
+                        <button onclick="openCTFGuide()" class="w-full text-left px-4 py-1.5 hover:bg-kali-accent/20 flex items-center space-x-2">
+                            <i class="fa-solid fa-flag text-kali-yellow"></i>
+                            <span>Cyber Range CTF Lab Guide</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="h-4 w-px bg-gray-700/60 mx-1"></div>
+
+            <!-- Quick Launch Buttons -->
+            <button onclick="launchApp('terminal')" title="Terminal" class="p-1.5 hover:bg-gray-700/50 rounded text-gray-300 transition">
+                <i class="fa-solid fa-terminal text-sm"></i>
+            </button>
+            <button onclick="openWireshark()" title="Wireshark" class="p-1.5 hover:bg-gray-700/50 rounded text-blue-400 transition">
+                <i class="fa-solid fa-network-wired text-sm"></i>
+            </button>
+            <button onclick="openBurpSuite()" title="Burp Suite Proxy" class="p-1.5 hover:bg-gray-700/50 rounded text-orange-400 transition">
+                <i class="fa-solid fa-shield-halved text-sm"></i>
+            </button>
+            <button onclick="openCTFGuide()" title="CTF Missions" class="p-1.5 hover:bg-gray-700/50 rounded text-kali-yellow transition">
+                <i class="fa-solid fa-flag text-sm"></i>
+            </button>
+            <button onclick="openEditor()" title="Leafpad Text Editor" class="p-1.5 hover:bg-gray-700/50 rounded text-kali-green transition">
+                <i class="fa-solid fa-file-code text-sm"></i>
+            </button>
+        </div>
+
+        <!-- Middle Workspace Task Bar -->
+        <div id="workspace-bar" class="flex-1 flex items-center justify-start px-4 space-x-2 overflow-x-auto">
+            <!-- Open windows icons populated dynamically -->
+        </div>
+
+        <!-- Right System Indicators -->
+        <div class="flex items-center space-x-3 text-[11px] text-gray-400 font-mono">
+            <!-- Audio Toggle -->
+            <button id="sound-toggle-btn" onclick="toggleAudio()" class="hover:text-white px-1" title="Toggle Synthesized Audio FX">
+                <i id="sound-icon" class="fa-solid fa-volume-xmark text-gray-500"></i>
+            </button>
+            
+            <!-- Scanline CRT Effect Toggle -->
+            <button onclick="toggleScanlines()" class="hover:text-white px-1" title="Toggle CRT Scanline Effect">
+                <i class="fa-solid fa-tv text-kali-accent"></i>
+            </button>
+
+            <!-- Dynamic Network Traffic Graph Canvas -->
+            <div class="flex items-center space-x-1" title="Subnet Traffic rx/tx">
+                <i class="fa-solid fa-chart-line text-kali-cyan"></i>
+                <canvas id="net-graph" width="36" height="14" class="rounded bg-gray-900 border border-gray-800"></canvas>
+            </div>
+
+            <!-- CPU Indicator -->
+            <div class="flex items-center space-x-1" title="CPU Load">
+                <i class="fa-solid fa-microchip text-kali-accent"></i>
+                <span id="cpu-usage">14%</span>
+            </div>
+
+            <!-- RAM Indicator -->
+            <div class="flex items-center space-x-1" title="RAM Usage">
+                <i class="fa-solid fa-memory text-kali-green"></i>
+                <span id="ram-usage">3.1 GB</span>
+            </div>
+
+            <!-- Subnet Badge -->
+            <div class="hidden md:flex items-center space-x-1 bg-gray-800/80 px-2 py-0.5 rounded text-[10px] text-kali-cyan border border-gray-700">
+                <i class="fa-solid fa-network-wired"></i>
+                <span>10.10.14.88/24</span>
+            </div>
+
+            <!-- Clock -->
+            <div id="live-clock" class="text-gray-100 font-bold">23:00:00</div>
+        </div>
+    </header>
+
+    <!-- Main Desktop Workspace -->
+    <main id="desktop" class="relative w-full h-[calc(100vh-2.25rem)] overflow-hidden p-4">
+        <!-- Background Dragon Logo -->
+        <i class="fa-solid fa-dragon kali-watermark"></i>
+
+        <!-- Desktop Application Icons -->
+        <div class="grid grid-cols-1 gap-4 w-28 text-center text-xs font-medium z-10 relative">
+            <div onclick="launchApp('terminal')" class="flex flex-col items-center justify-center p-2 rounded-lg hover:bg-white/10 cursor-pointer group transition border border-transparent hover:border-kali-accent/30">
+                <div class="w-12 h-12 bg-gray-900/80 rounded-xl flex items-center justify-center border border-gray-700 group-hover:border-kali-accent shadow-lg text-kali-accent text-xl mb-1">
+                    <i class="fa-solid fa-terminal"></i>
+                </div>
+                <span class="text-gray-200 group-hover:text-white drop-shadow">Root Terminal</span>
+            </div>
+
+            <div onclick="openCTFGuide()" class="flex flex-col items-center justify-center p-2 rounded-lg hover:bg-white/10 cursor-pointer group transition border border-transparent hover:border-kali-yellow/30">
+                <div class="w-12 h-12 bg-gray-900/80 rounded-xl flex items-center justify-center border border-gray-700 group-hover:border-kali-yellow shadow-lg text-kali-yellow text-xl mb-1">
+                    <i class="fa-solid fa-flag"></i>
+                </div>
+                <span class="text-gray-200 group-hover:text-white drop-shadow">CTF Cyber Range</span>
+            </div>
+
+            <div onclick="openWireshark()" class="flex flex-col items-center justify-center p-2 rounded-lg hover:bg-white/10 cursor-pointer group transition border border-transparent hover:border-blue-400/30">
+                <div class="w-12 h-12 bg-gray-900/80 rounded-xl flex items-center justify-center border border-gray-700 group-hover:border-blue-400 shadow-lg text-blue-400 text-xl mb-1">
+                    <i class="fa-solid fa-network-wired"></i>
+                </div>
+                <span class="text-gray-200 group-hover:text-white drop-shadow">Wireshark</span>
+            </div>
+
+            <div onclick="openBurpSuite()" class="flex flex-col items-center justify-center p-2 rounded-lg hover:bg-white/10 cursor-pointer group transition border border-transparent hover:border-orange-400/30">
+                <div class="w-12 h-12 bg-gray-900/80 rounded-xl flex items-center justify-center border border-gray-700 group-hover:border-orange-400 shadow-lg text-orange-400 text-xl mb-1">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <span class="text-gray-200 group-hover:text-white drop-shadow">Burp Suite CE</span>
+            </div>
+
+            <div onclick="openEditor()" class="flex flex-col items-center justify-center p-2 rounded-lg hover:bg-white/10 cursor-pointer group transition border border-transparent hover:border-kali-green/30">
+                <div class="w-12 h-12 bg-gray-900/80 rounded-xl flex items-center justify-center border border-gray-700 group-hover:border-kali-green shadow-lg text-kali-green text-xl mb-1">
+                    <i class="fa-solid fa-file-code"></i>
+                </div>
+                <span class="text-gray-200 group-hover:text-white drop-shadow">Leafpad Editor</span>
+            </div>
+        </div>
+
+        <!-- WINDOW 1: Zsh Terminal Engine -->
+        <div id="win-terminal" class="window absolute top-8 left-36 w-[860px] h-[540px] bg-kali-bg/95 rounded-lg border border-gray-800 flex flex-col z-20 shadow-2xl backdrop-blur-md overflow-hidden">
+            <div class="window-header h-8 bg-kali-header flex items-center justify-between px-3 cursor-move border-b border-gray-800">
+                <div class="flex items-center space-x-2 text-xs font-mono text-gray-300">
+                    <i class="fa-solid fa-terminal text-kali-accent"></i>
+                    <span class="font-semibold" id="terminal-title">root@kali: ~ (zsh)</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button onclick="clearTerminal()" class="text-gray-400 hover:text-white text-xs px-1" title="Clear Console"><i class="fa-solid fa-eraser"></i></button>
+                    <button onclick="closeWindow('win-terminal')" class="w-3 h-3 bg-red-500/80 hover:bg-red-500 rounded-full flex items-center justify-center text-[8px] text-black"><i class="fa-solid fa-xmark opacity-0 hover:opacity-100"></i></button>
+                </div>
+            </div>
+
+            <div id="terminal-body" class="flex-1 p-3 font-mono text-xs overflow-y-auto leading-relaxed text-gray-200" onclick="focusTerminalInput()">
+                <div class="mb-3 text-kali-accent">
+                    <pre class="font-mono text-[9.5px] leading-none text-kali-accent hidden sm:block">
+┌──(root㉿kali)-[~]
+└─$ Kali Linux GNU/Linux Roll (x86_64) - Cyber Range Virtual Sandbox Subnet [10.10.10.0/24]
+                    </pre>
+                    <div class="text-gray-400 text-xs mt-1">
+                        Type <span class="text-kali-cyan font-bold">help</span> for commands, run <span class="text-kali-green font-bold">nmap 10.10.10.5</span>, or launch <span class="text-kali-yellow font-bold">python3</span> REPL.
+                    </div>
+                </div>
+
+                <div id="terminal-output" class="space-y-1"></div>
+
+                <div class="flex items-center mt-2 text-xs">
+                    <span id="prompt-label" class="text-kali-cyan font-bold mr-2 whitespace-nowrap">
+                        <span class="text-kali-accent">┌──(</span><span class="text-kali-red font-bold">root</span><span class="text-kali-accent">㉿</span><span class="text-kali-cyan">kali</span><span class="text-kali-accent">)-[</span><span class="text-white">~</span><span class="text-kali-accent">]</span><br><span class="text-kali-accent">└─</span><span class="text-kali-red font-bold">#</span>
+                    </span>
+                    <input type="text" id="terminal-input" class="flex-1 bg-transparent border-none outline-none text-gray-100 font-mono caret-kali-accent pl-1" focus autocomplete="off" spellcheck="false" placeholder="Type command...">
+                </div>
+            </div>
+        </div>
+
+        <!-- WINDOW 2: Wireshark GUI -->
+        <div id="win-wireshark" class="window absolute top-12 left-20 w-[900px] h-[540px] bg-kali-panel rounded-lg border border-gray-800 flex flex-col z-20 shadow-2xl backdrop-blur-md overflow-hidden hidden">
+            <div class="window-header h-8 bg-kali-header flex items-center justify-between px-3 cursor-move border-b border-gray-800">
+                <div class="flex items-center space-x-2 text-xs font-mono text-blue-400">
+                    <i class="fa-solid fa-network-wired"></i>
+                    <span class="font-semibold text-gray-200">Wireshark Network Packet Analyzer - eth0 (10.10.14.88)</span>
+                </div>
+                <button onclick="closeWindow('win-wireshark')" class="w-3 h-3 bg-red-500/80 hover:bg-red-500 rounded-full flex items-center justify-center text-[8px] text-black"><i class="fa-solid fa-xmark opacity-0 hover:opacity-100"></i></button>
+            </div>
+
+            <!-- Wireshark Toolbar & Filter Bar -->
+            <div class="p-2 bg-gray-900 border-b border-gray-800 flex items-center space-x-3 text-xs">
+                <button id="ws-toggle-btn" onclick="toggleWiresharkCapture()" class="bg-kali-green/20 border border-kali-green/40 hover:bg-kali-green/40 text-kali-green px-2.5 py-1 rounded flex items-center space-x-1 font-mono">
+                    <i id="ws-play-icon" class="fa-solid fa-play text-xs"></i>
+                    <span id="ws-status-text">Start Capture</span>
+                </button>
+                <div class="flex-1 flex items-center space-x-2">
+                    <span class="text-gray-400 font-mono">Display Filter:</span>
+                    <input type="text" id="ws-filter" oninput="applyWiresharkFilter()" placeholder="e.g. http, tcp, dns, icmp, arp" class="flex-1 bg-gray-950 border border-gray-700 rounded px-2 py-0.5 font-mono text-gray-200 outline-none focus:border-blue-400">
+                </div>
+            </div>
+
+            <!-- Packet Stream List -->
+            <div class="flex-1 overflow-y-auto p-2 bg-kali-bg font-mono text-[11px]">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-gray-800 text-gray-400 text-[10px] uppercase">
+                            <th class="py-1">No.</th>
+                            <th>Time</th>
+                            <th>Source</th>
+                            <th>Destination</th>
+                            <th>Protocol</th>
+                            <th>Length</th>
+                            <th>Info</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ws-packet-table" class="divide-y divide-gray-900">
+                        <!-- Packets streamed dynamically -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Packet Details Pane -->
+            <div class="h-32 bg-gray-900/90 border-t border-gray-800 p-2 overflow-y-auto font-mono text-[11px] text-gray-300" id="ws-packet-details">
+                <span class="text-gray-500">Select a packet above to inspect payload frame header and protocol structure.</span>
+            </div>
+        </div>
+
+        <!-- WINDOW 3: Burp Suite CE GUI -->
+        <div id="win-burp" class="window absolute top-16 left-28 w-[880px] h-[550px] bg-kali-panel rounded-lg border border-gray-800 flex flex-col z-20 shadow-2xl backdrop-blur-md overflow-hidden hidden">
+            <div class="window-header h-8 bg-kali-header flex items-center justify-between px-3 cursor-move border-b border-gray-800">
+                <div class="flex items-center space-x-2 text-xs font-mono text-orange-400">
+                    <i class="fa-solid fa-shield-halved"></i>
+                    <span class="font-semibold text-gray-200">Burp Suite Community Edition v2026.4 - Proxy Interceptor</span>
+                </div>
+                <button onclick="closeWindow('win-burp')" class="w-3 h-3 bg-red-500/80 hover:bg-red-500 rounded-full flex items-center justify-center text-[8px] text-black"><i class="fa-solid fa-xmark opacity-0 hover:opacity-100"></i></button>
+            </div>
+
+            <!-- Tab navigation -->
+            <div class="bg-gray-900 px-3 pt-2 border-b border-gray-800 flex space-x-2 text-xs">
+                <button onclick="switchBurpTab('interceptor')" id="tab-btn-interceptor" class="px-3 py-1.5 bg-kali-panel text-orange-400 font-bold border-t-2 border-orange-400 rounded-t">Proxy Intercept</button>
+                <button onclick="switchBurpTab('repeater')" id="tab-btn-repeater" class="px-3 py-1.5 text-gray-400 hover:text-white rounded-t">HTTP Repeater</button>
+            </div>
+
+            <!-- TAB 1: Interceptor -->
+            <div id="burp-interceptor-tab" class="flex-1 p-3 flex flex-col space-y-3 font-mono text-xs">
+                <div class="flex items-center justify-between bg-gray-900 p-2 rounded border border-gray-800">
+                    <div class="flex items-center space-x-3">
+                        <button id="burp-intercept-toggle" onclick="toggleBurpIntercept()" class="bg-red-600 hover:bg-red-700 text-white font-bold px-3 py-1 rounded">
+                            Intercept IS ON
+                        </button>
+                        <button onclick="forwardBurpPacket()" class="bg-kali-accent/20 hover:bg-kali-accent/40 text-kali-accent border border-kali-accent/30 px-3 py-1 rounded">Forward</button>
+                        <button onclick="dropBurpPacket()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1 rounded">Drop</button>
+                    </div>
+                    <span class="text-gray-400 text-[11px]">Target: http://10.10.10.5:80</span>
+                </div>
+
+                <div class="flex-1 grid grid-cols-2 gap-3">
+                    <div class="flex flex-col bg-gray-950 rounded p-2 border border-gray-800">
+                        <span class="text-orange-400 font-bold mb-1">Raw Intercepted Request:</span>
+                        <textarea id="burp-req-body" class="flex-1 bg-transparent border-none outline-none text-gray-200 font-mono text-xs resize-none" spellcheck="false">POST /login.php HTTP/1.1
+Host: 10.10.10.5
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; Kali)
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 32
+
+username=admin' OR '1'='1&password=admin</textarea>
+                    </div>
+
+                    <div class="flex flex-col bg-gray-950 rounded p-2 border border-gray-800">
+                        <span class="text-kali-green font-bold mb-1">Server Response:</span>
+                        <div id="burp-resp-body" class="flex-1 text-gray-300 font-mono text-xs overflow-y-auto whitespace-pre-wrap">HTTP/1.1 200 OK
+Server: Apache/2.2.8 (Ubuntu)
+Set-Cookie: PHPSESSID=9a8f2b1c3d4e5f; path=/
+Content-Type: text/html
+
+&lt;html&gt;
+ &lt;body&gt;
+  &lt;h1 style="color:green"&gt;WELCOME ADMIN! Authentication Bypassed!&lt;/h1&gt;
+  &lt;p&gt;FLAG{sql_injection_master_2026}&lt;/p&gt;
+ &lt;/body&gt;
+&lt;/html&gt;</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: Repeater -->
+            <div id="burp-repeater-tab" class="flex-1 p-3 flex flex-col space-y-3 font-mono text-xs hidden">
+                <div class="flex items-center space-x-2">
+                    <button onclick="sendBurpRepeater()" class="bg-orange-500 hover:bg-orange-600 text-white font-bold px-4 py-1 rounded">Send Request</button>
+                    <span class="text-gray-400 text-[11px]">Repeater Tab #1 - Direct Web App Testing</span>
+                </div>
+                <div class="flex-1 grid grid-cols-2 gap-3">
+                    <textarea id="repeater-req" class="bg-gray-950 rounded p-2 border border-gray-800 text-gray-200 font-mono text-xs outline-none" spellcheck="false">GET /admin/dashboard.php HTTP/1.1
+Host: 10.10.10.5
+Cookie: PHPSESSID=9a8f2b1c3d4e5f
+User-Agent: Kali-Repeater/1.0</textarea>
+                    <div id="repeater-resp" class="bg-gray-950 rounded p-2 border border-gray-800 text-gray-300 font-mono text-xs overflow-y-auto whitespace-pre-wrap">Click 'Send Request' to test response...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- WINDOW 4: CTF Lab Guide & Flags Dashboard -->
+        <div id="win-ctf" class="window absolute top-10 right-10 w-[540px] h-[540px] bg-kali-panel rounded-lg border border-gray-800 flex flex-col z-20 shadow-2xl backdrop-blur-md overflow-hidden hidden">
+            <div class="window-header h-8 bg-kali-header flex items-center justify-between px-3 cursor-move border-b border-gray-800">
+                <div class="flex items-center space-x-2 text-xs font-mono text-kali-yellow">
+                    <i class="fa-solid fa-flag"></i>
+                    <span class="font-semibold text-gray-200">Cyber Range CTF Lab Missions & Scoreboard</span>
+                </div>
+                <button onclick="closeWindow('win-ctf')" class="w-3 h-3 bg-red-500/80 hover:bg-red-500 rounded-full flex items-center justify-center text-[8px] text-black"><i class="fa-solid fa-xmark opacity-0 hover:opacity-100"></i></button>
+            </div>
+
+            <div class="flex-1 p-4 overflow-y-auto space-y-4 text-xs font-sans">
+                <!-- Score Header -->
+                <div class="bg-gray-900/90 rounded-lg p-3 border border-gray-800 flex items-center justify-between">
+                    <div>
+                        <div class="text-sm font-bold text-white flex items-center space-x-2">
+                            <i class="fa-solid fa-trophy text-kali-yellow"></i>
+                            <span>Rank: Cyber Operative</span>
+                        </div>
+                        <div class="text-gray-400 text-[11px] mt-0.5">Total Score: <span id="ctf-score" class="text-kali-green font-bold">0 / 300 pts</span></div>
+                    </div>
+                    <div class="w-24 bg-gray-800 h-3 rounded-full overflow-hidden border border-gray-700">
+                        <div id="ctf-progress" class="bg-kali-green h-full w-0 transition-all duration-500"></div>
+                    </div>
+                </div>
+
+                <!-- Flag Input Submission Box -->
+                <div class="bg-gray-900/60 p-3 rounded-lg border border-gray-800">
+                    <label class="block text-gray-300 font-bold mb-1">Submit Captured Flag:</label>
+                    <div class="flex space-x-2">
+                        <input type="text" id="flag-input" placeholder="FLAG{...}" class="flex-1 bg-gray-950 border border-gray-700 rounded px-2.5 py-1 text-gray-100 font-mono text-xs outline-none focus:border-kali-accent">
+                        <button onclick="submitFlag()" class="bg-kali-accent hover:bg-kali-accent/80 text-white font-bold px-3 py-1 rounded">Submit</button>
+                    </div>
+                    <div id="flag-feedback" class="mt-1 text-[11px] font-mono"></div>
+                </div>
+
+                <!-- Subnet Targets Map -->
+                <div>
+                    <h4 class="text-gray-400 font-bold uppercase tracking-wider text-[10px] mb-2">Isolated Virtual Lab Subnet (10.10.10.0/24)</h4>
+                    <div class="space-y-2 font-mono">
+                        <div class="bg-gray-900/80 p-2.5 rounded border border-gray-800 flex justify-between items-center">
+                            <div>
+                                <span class="text-kali-green font-bold">10.10.10.5</span> - Metasploitable Web Server
+                                <div class="text-[10px] text-gray-400">Ports: 21 (FTP), 22 (SSH), 80 (HTTP)</div>
+                            </div>
+                            <button onclick="launchApp('terminal', 'nmap -sV 10.10.10.5')" class="text-kali-cyan hover:underline text-[11px]">Scan</button>
+                        </div>
+                        <div class="bg-gray-900/80 p-2.5 rounded border border-gray-800 flex justify-between items-center">
+                            <div>
+                                <span class="text-kali-yellow font-bold">10.10.10.12</span> - Corp Domain Controller
+                                <div class="text-[10px] text-gray-400">Ports: 88 (Kerberos), 389 (LDAP), 445 (SMB)</div>
+                            </div>
+                            <button onclick="launchApp('terminal', 'nmap -p 445 10.10.10.12')" class="text-kali-cyan hover:underline text-[11px]">Scan</button>
+                        </div>
+                        <div class="bg-gray-900/80 p-2.5 rounded border border-gray-800 flex justify-between items-center">
+                            <div>
+                                <span class="text-purple-400 font-bold">10.10.10.20</span> - Wireless Access Point
+                                <div class="text-[10px] text-gray-400">SSID: Corp_WiFi_5G (WPA2 Handshake)</div>
+                            </div>
+                            <button onclick="launchApp('terminal', 'airodump-ng wlan0mon')" class="text-kali-cyan hover:underline text-[11px]">Sniff</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mission List -->
+                <div class="space-y-3">
+                    <div class="bg-gray-900/40 border border-gray-800 rounded-lg p-3">
+                        <h4 class="text-kali-cyan font-bold text-xs flex justify-between">
+                            <span>Mission 1: Web SQL Injection & Auth Bypass</span>
+                            <span class="text-kali-yellow">100 pts</span>
+                        </h4>
+                        <p class="text-gray-300 text-[11px] mt-1">Open Burp Suite CE or Terminal, target <code class="bg-gray-800 px-1 rounded">10.10.10.5</code>, and bypass the HTTP login portal.</p>
+                    </div>
+
+                    <div class="bg-gray-900/40 border border-gray-800 rounded-lg p-3">
+                        <h4 class="text-kali-green font-bold text-xs flex justify-between">
+                            <span>Mission 2: VSFTPD Backdoor Shell</span>
+                            <span class="text-kali-yellow">100 pts</span>
+                        </h4>
+                        <p class="text-gray-300 text-[11px] mt-1">Launch <code class="bg-gray-800 px-1 rounded">msfconsole</code>, run <code class="bg-gray-800 px-1 rounded">use exploit/unix/ftp/vsftpd_234_backdoor</code> against target <code class="bg-gray-800 px-1 rounded">10.10.10.5</code> to grab the root flag in <code class="bg-gray-800 px-1 rounded">/root/flag.txt</code>.</p>
+                    </div>
+
+                    <div class="bg-gray-900/40 border border-gray-800 rounded-lg p-3">
+                        <h4 class="text-purple-400 font-bold text-xs flex justify-between">
+                            <span>Mission 3: WPA2 Wi-Fi Cracking</span>
+                            <span class="text-kali-yellow">100 pts</span>
+                        </h4>
+                        <p class="text-gray-300 text-[11px] mt-1">Run <code class="bg-gray-800 px-1 rounded">aircrack-ng -w wordlist.txt capture.cap</code> in terminal to recover the Wi-Fi key.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- WINDOW 5: Leafpad Text Editor -->
+        <div id="win-editor" class="window absolute top-20 left-44 w-[600px] h-[440px] bg-kali-panel rounded-lg border border-gray-800 flex flex-col z-20 shadow-2xl backdrop-blur-md overflow-hidden hidden">
+            <div class="window-header h-8 bg-kali-header flex items-center justify-between px-3 cursor-move border-b border-gray-800">
+                <div class="flex items-center space-x-2 text-xs font-mono text-kali-green">
+                    <i class="fa-solid fa-file-code"></i>
+                    <span class="font-semibold text-gray-200" id="editor-filename">Leafpad - exploit.py</span>
+                </div>
+                <button onclick="closeWindow('win-editor')" class="w-3 h-3 bg-red-500/80 hover:bg-red-500 rounded-full flex items-center justify-center text-[8px] text-black"><i class="fa-solid fa-xmark opacity-0 hover:opacity-100"></i></button>
+            </div>
+
+            <div class="bg-gray-900 px-3 py-1 border-b border-gray-800 flex items-center space-x-3 text-xs">
+                <button onclick="saveVirtualFile()" class="bg-kali-green/20 hover:bg-kali-green/40 border border-kali-green/30 text-kali-green px-2.5 py-0.5 rounded flex items-center space-x-1">
+                    <i class="fa-solid fa-floppy-disk"></i>
+                    <span>Save Script</span>
+                </button>
+                <button onclick="runEditorScriptInTerminal()" class="bg-kali-accent/20 hover:bg-kali-accent/40 border border-kali-accent/30 text-kali-accent px-2.5 py-0.5 rounded flex items-center space-x-1">
+                    <i class="fa-solid fa-play"></i>
+                    <span>Run Script in Terminal</span>
+                </button>
+            </div>
+
+            <textarea id="editor-textarea" class="flex-1 bg-kali-bg p-3 border-none outline-none text-gray-200 font-mono text-xs resize-none caret-kali-green" spellcheck="false"># Custom Python Security Script
+import sys
+
+print("[+] Executing custom exploit script against 10.10.10.5...")
+print("[+] Bypassing firewall rules...")
+print("[+] Success! Script executed cleanly.")
+</textarea>
+        </div>
+    </main>
+
+    <script>
+        // State Management & Global Variables
+        let isAudioEnabled = false;
+        let commandHistory = [];
+        let historyIndex = -1;
+        let currentPromptMode = 'bash'; // 'bash', 'msf', 'python'
+        let virtualFileSystem = {
+            'exploit.py': `# Custom Python Security Script\nprint("[+] Executing script against target...")`,
+            'wordlist.txt': 'admin\n123456\npassword\nkali2026\nshadow',
+            'hash.txt': 'root:$6$vU3R...:18234:0:99999:7:::'
+        };
+        let ctfFlags = {
+            'FLAG{sql_injection_master_2026}': { pts: 100, claimed: false },
+            'FLAG{vsftpd_backdoor_root_2026}': { pts: 100, claimed: false },
+            'FLAG{wpa2_wifi_key_cracked_2026}': { pts: 100, claimed: false }
+        };
+        let ctfScore = 0;
+
+        // Audio Effects Generator (Web Audio API)
+        function playKeyClickSound() {
+            if (!isAudioEnabled) return;
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(320 + Math.random() * 150, ctx.currentTime);
+                gain.gain.setValueAtTime(0.015, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.03);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.03);
+            } catch (e) {}
+        }
+
+        function playSuccessSound() {
+            if (!isAudioEnabled) return;
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(523.25, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.2);
+                gain.gain.setValueAtTime(0.1, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.3);
+            } catch (e) {}
+        }
+
+        function toggleAudio() {
+            isAudioEnabled = !isAudioEnabled;
+            const soundIcon = document.getElementById('sound-icon');
+            soundIcon.className = isAudioEnabled ? 'fa-solid fa-volume-high text-kali-green' : 'fa-solid fa-volume-xmark text-gray-500';
+        }
+
+        function toggleScanlines() {
+            document.body.classList.toggle('scanlines');
+        }
+
+        // Live System Clock & Resource Metrics
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('live-clock').innerText = now.toTimeString().split(' ')[0];
+            document.getElementById('cpu-usage').innerText = Math.floor(10 + Math.random() * 20) + '%';
+        }, 1000);
+
+        // Network Graph Canvas Animation
+        const netCanvas = document.getElementById('net-graph');
+        const netCtx = netCanvas.getContext('2d');
+        let netPoints = [4, 8, 3, 10, 5, 12, 7, 4, 9, 6];
+
+        setInterval(() => {
+            netPoints.shift();
+            netPoints.push(Math.floor(2 + Math.random() * 11));
+            netCtx.clearRect(0, 0, netCanvas.width, netCanvas.height);
+            netCtx.strokeStyle = '#00b5d8';
+            netCtx.lineWidth = 1;
+            netCtx.beginPath();
+            netPoints.forEach((p, i) => {
+                const x = (i / (netPoints.length - 1)) * netCanvas.width;
+                const y = netCanvas.height - p;
+                if (i === 0) netCtx.moveTo(x, y);
+                else netCtx.lineTo(x, y);
+            });
+            netCtx.stroke();
+        }, 1200);
+
+        // Window Dragging & Z-Index Focus Engine
+        let highestZIndex = 30;
+
+        function makeDraggable(win) {
+            const header = win.querySelector('.window-header');
+            let isDragging = false, startX, startY, initialLeft, initialTop;
+
+            win.addEventListener('mousedown', () => focusWindow(win));
+
+            if (header) {
+                header.addEventListener('mousedown', (e) => {
+                    isDragging = true;
+                    startX = e.clientX;
+                    startY = e.clientY;
+                    initialLeft = win.offsetLeft;
+                    initialTop = win.offsetTop;
+                    focusWindow(win);
+                    e.preventDefault();
+                });
+            }
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                win.style.left = `${initialLeft + (e.clientX - startX)}px`;
+                win.style.top = `${initialTop + (e.clientY - startY)}px`;
+            });
+
+            document.addEventListener('mouseup', () => isDragging = false);
+        }
+
+        function focusWindow(win) {
+            document.querySelectorAll('.window').forEach(w => w.classList.remove('active-window'));
+            highestZIndex++;
+            win.style.zIndex = highestZIndex;
+            win.classList.add('active-window');
+        }
+
+        document.querySelectorAll('.window').forEach(win => makeDraggable(win));
+
+        // Window Controls
+        function closeWindow(id) {
+            document.getElementById(id).classList.add('hidden');
+            updateWorkspaceBar();
+        }
+
+        function launchApp(appName, initialCmd = null) {
+            document.getElementById('app-menu').classList.add('hidden');
+            if (appName === 'terminal') {
+                const win = document.getElementById('win-terminal');
+                win.classList.remove('hidden');
+                focusWindow(win);
+                if (initialCmd) {
+                    executeTerminalCommand(initialCmd);
+                }
+            }
+            updateWorkspaceBar();
+        }
+
+        function openWireshark() {
+            document.getElementById('app-menu').classList.add('hidden');
+            const win = document.getElementById('win-wireshark');
+            win.classList.remove('hidden');
+            focusWindow(win);
+            updateWorkspaceBar();
+        }
+
+        function openBurpSuite() {
+            document.getElementById('app-menu').classList.add('hidden');
+            const win = document.getElementById('win-burp');
+            win.classList.remove('hidden');
+            focusWindow(win);
+            updateWorkspaceBar();
+        }
+
+        function openCTFGuide() {
+            document.getElementById('app-menu').classList.add('hidden');
+            const win = document.getElementById('win-ctf');
+            win.classList.remove('hidden');
+            focusWindow(win);
+            updateWorkspaceBar();
+        }
+
+        function openEditor() {
+            document.getElementById('app-menu').classList.add('hidden');
+            const win = document.getElementById('win-editor');
+            win.classList.remove('hidden');
+            focusWindow(win);
+            updateWorkspaceBar();
+        }
+
+        function toggleAppMenu() {
+            document.getElementById('app-menu').classList.toggle('hidden');
+        }
+
+        function updateWorkspaceBar() {
+            const bar = document.getElementById('workspace-bar');
+            bar.innerHTML = '';
+            
+            const windows = [
+                { id: 'win-terminal', title: 'Terminal', icon: 'fa-terminal' },
+                { id: 'win-wireshark', title: 'Wireshark', icon: 'fa-network-wired' },
+                { id: 'win-burp', title: 'Burp Suite', icon: 'fa-shield-halved' },
+                { id: 'win-ctf', title: 'CTF Guide', icon: 'fa-flag' },
+                { id: 'win-editor', title: 'Leafpad', icon: 'fa-file-code' }
+            ];
+
+            windows.forEach(w => {
+                const el = document.getElementById(w.id);
+                if (el && !el.classList.contains('hidden')) {
+                    const btn = document.createElement('button');
+                    btn.className = 'px-2.5 py-1 bg-gray-800/80 hover:bg-gray-700 text-gray-200 rounded text-xs flex items-center space-x-1 border border-gray-700 font-mono';
+                    btn.innerHTML = `<i class="fa-solid ${w.icon} text-[10px]"></i> <span>${w.title}</span>`;
+                    btn.onclick = () => focusWindow(el);
+                    bar.appendChild(btn);
+                }
+            });
+        }
+
+        // Terminal Prompt & Command Execution Engine
+        const terminalInput = document.getElementById('terminal-input');
+        const terminalOutput = document.getElementById('terminal-output');
+        const terminalBody = document.getElementById('terminal-body');
+
+        function focusTerminalInput() {
+            terminalInput.focus();
+        }
+
+        terminalInput.addEventListener('keydown', (e) => {
+            playKeyClickSound();
+            
+            if (e.key === 'Enter') {
+                const command = terminalInput.value.trim();
+                if (command) {
+                    commandHistory.push(command);
+                    historyIndex = commandHistory.length;
+                    executeTerminalCommand(command);
+                } else {
+                    appendPromptEcho('');
+                }
+                terminalInput.value = '';
+            } else if (e.key === 'ArrowUp') {
+                if (historyIndex > 0) {
+                    historyIndex--;
+                    terminalInput.value = commandHistory[historyIndex];
+                }
+            } else if (e.key === 'ArrowDown') {
+                if (historyIndex < commandHistory.length - 1) {
+                    historyIndex++;
+                    terminalInput.value = commandHistory[historyIndex];
+                } else {
+                    historyIndex = commandHistory.length;
+                    terminalInput.value = '';
+                }
+            } else if (e.key === 'Tab') {
+                e.preventDefault();
+                handleTabCompletion();
+            } else if (e.ctrlKey && e.key === 'c') {
+                appendPromptEcho(terminalInput.value + '^C');
+                terminalInput.value = '';
+            }
+        });
+
+        function appendPromptEcho(cmd) {
+            const div = document.createElement('div');
+            div.className = 'my-1';
+            
+            if (currentPromptMode === 'msf') {
+                div.innerHTML = `<span class="text-kali-red font-bold">msf6</span> <span class="text-white">&gt;</span> <span class="text-gray-100">${escapeHtml(cmd)}</span>`;
+            } else if (currentPromptMode === 'python') {
+                div.innerHTML = `<span class="text-kali-green font-bold">&gt;&gt;&gt;</span> <span class="text-gray-100">${escapeHtml(cmd)}</span>`;
+            } else {
+                div.innerHTML = `<span class="text-kali-accent">┌──(</span><span class="text-kali-red font-bold">root</span><span class="text-kali-accent">㉿</span><span class="text-kali-cyan">kali</span><span class="text-kali-accent">)-[</span><span class="text-white">~</span><span class="text-kali-accent">]</span><br><span class="text-kali-accent">└─</span><span class="text-kali-red font-bold">#</span> <span class="text-gray-100">${escapeHtml(cmd)}</span>`;
+            }
+            terminalOutput.appendChild(div);
+            scrollTerminalToBottom();
+        }
+
+        function scrollTerminalToBottom() {
+            terminalBody.scrollTop = terminalBody.scrollHeight;
+        }
+
+        function clearTerminal() {
+            terminalOutput.innerHTML = '';
+        }
+
+        function escapeHtml(text) {
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+
+        function printOutput(htmlStr) {
+            const div = document.createElement('div');
+            div.className = 'my-1 text-xs';
+            div.innerHTML = htmlStr;
+            terminalOutput.appendChild(div);
+            scrollTerminalToBottom();
+        }
+
+        function handleTabCompletion() {
+            const commands = ['nmap', 'msfconsole', 'gobuster', 'hydra', 'aircrack-ng', 'airodump-ng', 'john', 'python3', 'clear', 'help', 'ping', 'whoami', 'pwd', 'ls', 'cat'];
+            const val = terminalInput.value;
+            const match = commands.find(c => c.startsWith(val));
+            if (match) terminalInput.value = match + ' ';
+        }
+
+        // Terminal Command Processing
+        function executeTerminalCommand(cmdStr) {
+            appendPromptEcho(cmdStr);
+            const rawCmd = cmdStr.trim();
+            const args = rawCmd.split(' ');
+            const mainCmd = args[0].toLowerCase();
+
+            // Pipe or File Redirection Check
+            if (rawCmd.includes('>')) {
+                const parts = rawCmd.split('>');
+                const filename = parts[1].trim();
+                virtualFileSystem[filename] = "Output redirect generated by: " + parts[0];
+                printOutput(`<span class="text-kali-green">[+] Output redirected and saved to '${escapeHtml(filename)}'</span>`);
+                return;
+            }
+
+            if (currentPromptMode === 'msf') {
+                handleMsfCommand(rawCmd);
+                return;
+            } else if (currentPromptMode === 'python') {
+                handlePythonReplCommand(rawCmd);
+                return;
+            }
+
+            switch (mainCmd) {
+                case 'help':
+                    renderHelpOutput();
+                    break;
+
+                case 'clear':
+                    clearTerminal();
+                    break;
+
+                case 'whoami':
+                    printOutput('<span class="text-kali-red font-bold">root</span>');
+                    break;
+
+                case 'pwd':
+                    printOutput('<span class="text-gray-300">/root</span>');
+                    break;
+
+                case 'ls':
+                    let filesStr = Object.keys(virtualFileSystem).map(f => `<span class="text-kali-cyan font-bold">${f}</span>`).join('  ');
+                    printOutput(filesStr + '  <span class="text-kali-accent font-bold">Desktop</span>  <span class="text-kali-accent font-bold">Downloads</span>');
+                    break;
+
+                case 'cat':
+                    if (args[1] && virtualFileSystem[args[1]]) {
+                        printOutput(escapeHtml(virtualFileSystem[args[1]]));
+                    } else if (args[1] === '/root/flag.txt') {
+                        printOutput('<span class="text-kali-green font-bold">FLAG{vsftpd_backdoor_root_2026}</span>');
+                    } else {
+                        printOutput(`<span class="text-gray-400">cat: ${escapeHtml(args[1] || '')}: No such file</span>`);
+                    }
+                    break;
+
+                case 'ip':
+                case 'ifconfig':
+                    printOutput(`
+<span class="text-kali-accent font-bold">eth0:</span> inet <span class="text-kali-green font-bold">10.10.14.88</span> netmask 255.255.255.0 broadcast 10.10.14.255
+<span class="text-purple-400 font-bold">wlan0mon:</span> Mode: Monitor Frequency: 2.437 GHz Access Point: Not-Associated
+`);
+                    break;
+
+                case 'ping':
+                    printOutput(`PING ${escapeHtml(args[1] || '10.10.10.5')} 56(84) bytes of data.<br>64 bytes from ${escapeHtml(args[1] || '10.10.10.5')}: icmp_seq=1 ttl=64 time=0.42 ms<br>64 bytes from ${escapeHtml(args[1] || '10.10.10.5')}: icmp_seq=2 ttl=64 time=0.38 ms`);
+                    break;
+
+                case 'nmap':
+                    runNmapSim(args);
+                    break;
+
+                case 'gobuster':
+                case 'dirb':
+                    runGobusterSim(args);
+                    break;
+
+                case 'hydra':
+                    runHydraSim(args);
+                    break;
+
+                case 'aircrack-ng':
+                case 'airodump-ng':
+                    runAircrackSim();
+                    break;
+
+                case 'msfconsole':
+                    enterMsfConsole();
+                    break;
+
+                case 'python3':
+                case 'python':
+                    if (args[1] && virtualFileSystem[args[1]]) {
+                        printOutput(`<span class="text-kali-green">[+] Running ${escapeHtml(args[1])}...</span><br>Execution complete.`);
+                    } else {
+                        enterPythonRepl();
+                    }
+                    break;
+
+                default:
+                    printOutput(`<span class="text-kali-red">zsh: command not found: ${escapeHtml(mainCmd)}</span>. Type <span class="text-kali-cyan">help</span> for commands.`);
+            }
+        }
+
+        function renderHelpOutput() {
+            printOutput(`
+<div class="border border-gray-800 bg-gray-900/60 p-2.5 rounded space-y-1">
+    <div class="text-kali-cyan font-bold border-b border-gray-800 pb-1 mb-1">Cyber Range Terminal Tools & Commands:</div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+        <div><span class="text-kali-green font-bold">nmap 10.10.10.5</span> - Port & vulnerability scan</div>
+        <div><span class="text-kali-red font-bold">msfconsole</span> - Metasploit Framework interactive console</div>
+        <div><span class="text-kali-cyan font-bold">gobuster dir -u ...</span> - Web directory scanner</div>
+        <div><span class="text-kali-yellow font-bold">hydra -l admin -P ...</span> - Password brute-force attack</div>
+        <div><span class="text-purple-400 font-bold">aircrack-ng capture.cap</span> - WPA2 handshake cracker</div>
+        <div><span class="text-kali-green font-bold">python3</span> - Interactive Python 3 REPL interpreter</div>
+    </div>
+</div>
+`);
+        }
+
+        function runNmapSim(args) {
+            const target = args.find(a => a.includes('10.')) || '10.10.10.5';
+            printOutput(`<span class="text-kali-cyan">Starting Nmap 7.94 ( https://nmap.org ) against ${escapeHtml(target)}</span>...`);
+
+            setTimeout(() => {
+                if (target.includes('12')) {
+                    printOutput(`
+<div class="text-[11px]">
+Nmap report for <span class="text-kali-cyan font-bold">10.10.10.12 (Corp Domain Controller)</span><br>
+PORT     STATE SERVICE     VERSION<br>
+<span class="text-kali-green">88/tcp   open  kerberos-sec MIT Kerberos</span><br>
+<span class="text-kali-green">389/tcp  open  ldap         Microsoft Windows Active Directory LDAP</span><br>
+<span class="text-kali-green">445/tcp  open  microsoft-ds Windows Server 2022 SMB2</span>
+</div>
+`);
+                } else {
+                    printOutput(`
+<div class="text-[11px]">
+Nmap report for <span class="text-kali-cyan font-bold">10.10.10.5 (Metasploitable Server)</span><br>
+PORT     STATE SERVICE     VERSION<br>
+<span class="text-kali-green">21/tcp   open  ftp         vsftpd 2.3.4 (Vulnerable Backdoor)</span><br>
+<span class="text-kali-green">22/tcp   open  ssh         OpenSSH 4.7p1 Debian</span><br>
+<span class="text-kali-green">80/tcp   open  http        Apache httpd 2.2.8 ((Ubuntu))</span>
+</div>
+`);
+                }
+            }, 1000);
+        }
+
+        function runGobusterSim(args) {
+            printOutput(`<span class="text-kali-cyan font-bold">Gobuster v3.6 - Directory Brute-Forcing http://10.10.10.5</span>`);
+            setTimeout(() => printOutput(`<span class="text-kali-green">/index.php (Status: 200) [Size: 1420]</span>`), 400);
+            setTimeout(() => printOutput(`<span class="text-kali-green">/login.php (Status: 200) [Size: 2180]</span>`), 800);
+            setTimeout(() => printOutput(`<span class="text-kali-yellow">/admin (Status: 301) -&gt; Redirect</span>`), 1200);
+            setTimeout(() => printOutput(`<span class="text-kali-green">/phpmyadmin (Status: 200)</span>`), 1600);
+        }
+
+        function runHydraSim(args) {
+            printOutput(`<span class="text-kali-yellow font-bold">Hydra v9.5 - Attacking ftp://10.10.10.5:21/</span>`);
+            setTimeout(() => {
+                printOutput(`<span class="text-kali-green font-bold">[21][ftp] host: 10.10.10.5   login: admin   password: 123456</span>`);
+            }, 1200);
+        }
+
+        function runAircrackSim() {
+            printOutput(`<span class="text-purple-400 font-bold">Aircrack-ng 1.7 - Opening capture.cap (WPA2 Handshake)</span>`);
+            printOutput(`[00:00:01] Tested 1500 keys (k/s: 1420.2)...`);
+            setTimeout(() => {
+                printOutput(`<span class="text-kali-green font-bold">[+] KEY FOUND! [ kali2026 ]</span>`);
+                printOutput(`Flag: <span class="text-kali-yellow font-bold">FLAG{wpa2_wifi_key_cracked_2026}</span>`);
+                playSuccessSound();
+            }, 1200);
+        }
+
+        function enterMsfConsole() {
+            currentPromptMode = 'msf';
+            document.getElementById('prompt-label').innerHTML = `<span class="text-kali-red font-bold">msf6</span> <span class="text-white">&gt;</span>`;
+            printOutput(`<div class="text-kali-red font-mono font-bold">Metasploit Framework v6.4 Console</div><div>Type 'use exploit/unix/ftp/vsftpd_234_backdoor' and 'run'.</div>`);
+        }
+
+        function handleMsfCommand(cmd) {
+            const lower = cmd.toLowerCase();
+            if (lower === 'exit') {
+                currentPromptMode = 'bash';
+                document.getElementById('prompt-label').innerHTML = `<span class="text-kali-accent">┌──(</span><span class="text-kali-red font-bold">root</span><span class="text-kali-accent">㉿</span><span class="text-kali-cyan">kali</span><span class="text-kali-accent">)-[</span><span class="text-white">~</span><span class="text-kali-accent">]</span><br><span class="text-kali-accent">└─</span><span class="text-kali-red font-bold">#</span>`;
+                printOutput('Exited Metasploit console.');
+            } else if (lower.startsWith('use')) {
+                document.getElementById('prompt-label').innerHTML = `<span class="text-kali-red font-bold">msf6</span> exploit(<span class="text-kali-red">vsftpd_234_backdoor</span>) <span class="text-white">&gt;</span>`;
+                printOutput(`[*] Using module exploit/unix/ftp/vsftpd_234_backdoor`);
+            } else if (lower === 'run' || lower === 'exploit') {
+                printOutput(`[*] 10.10.10.5:21 - Banner: vsFTPd 2.3.4<br>[+] Command shell session 1 opened!`);
+                setTimeout(() => {
+                    printOutput(`<span class="text-kali-green font-bold">root@metasploitable:~# cat /root/flag.txt</span><br><span class="text-kali-yellow font-bold">FLAG{vsftpd_backdoor_root_2026}</span>`);
+                    playSuccessSound();
+                }, 1000);
+            } else {
+                printOutput(`msf6 command executed: ${escapeHtml(cmd)}`);
+            }
+        }
+
+        function enterPythonRepl() {
+            currentPromptMode = 'python';
+            document.getElementById('prompt-label').innerHTML = `<span class="text-kali-green font-bold">&gt;&gt;&gt;</span>`;
+            printOutput(`Python 3.11.4 (main, Kali GNU/Linux)<br>Type "exit()" to return to zsh.`);
+        }
+
+        function handlePythonReplCommand(cmd) {
+            if (cmd === 'exit()' || cmd === 'quit()') {
+                currentPromptMode = 'bash';
+                document.getElementById('prompt-label').innerHTML = `<span class="text-kali-accent">┌──(</span><span class="text-kali-red font-bold">root</span><span class="text-kali-accent">㉿</span><span class="text-kali-cyan">kali</span><span class="text-kali-accent">)-[</span><span class="text-white">~</span><span class="text-kali-accent">]</span><br><span class="text-kali-accent">└─</span><span class="text-kali-red font-bold">#</span>`;
+                printOutput('Exited Python REPL.');
+            } else if (cmd.startsWith('print(')) {
+                const str = cmd.replace('print(', '').replace(')', '').replace(/['"]/g, '');
+                printOutput(escapeHtml(str));
+            } else {
+                printOutput(`<span class="text-gray-300">${escapeHtml(cmd)}</span>`);
+            }
+        }
+
+        // Wireshark Capture Simulator
+        let isWiresharkCapturing = false;
+        let wsPacketCount = 0;
+        let wsInterval = null;
+
+        function toggleWiresharkCapture() {
+            isWiresharkCapturing = !isWiresharkCapturing;
+            const statusText = document.getElementById('ws-status-text');
+            const playIcon = document.getElementById('ws-play-icon');
+            const toggleBtn = document.getElementById('ws-toggle-btn');
+
+            if (isWiresharkCapturing) {
+                statusText.innerText = 'Stop Capture';
+                playIcon.className = 'fa-solid fa-stop text-xs';
+                toggleBtn.className = 'bg-red-600/30 border border-red-500/40 text-red-400 px-2.5 py-1 rounded flex items-center space-x-1 font-mono';
+                
+                wsInterval = setInterval(() => {
+                    wsPacketCount++;
+                    const protocols = ['HTTP', 'TCP', 'DNS', 'ICMP', 'ARP'];
+                    const proto = protocols[Math.floor(Math.random() * protocols.length)];
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-gray-800/80 cursor-pointer text-gray-300';
+                    tr.setAttribute('data-proto', proto.toLowerCase());
+                    tr.onclick = () => inspectWiresharkPacket(wsPacketCount, proto);
+
+                    tr.innerHTML = `
+                        <td class="py-1">${wsPacketCount}</td>
+                        <td>${(wsPacketCount * 0.12).toFixed(2)}s</td>
+                        <td class="text-kali-cyan">10.10.14.88</td>
+                        <td class="text-kali-yellow">10.10.10.5</td>
+                        <td class="font-bold ${proto === 'HTTP' ? 'text-kali-green' : 'text-blue-400'}">${proto}</td>
+                        <td>${Math.floor(60 + Math.random() * 200)}</td>
+                        <td>GET /login.php HTTP/1.1</td>
+                    `;
+                    document.getElementById('ws-packet-table').appendChild(tr);
+                }, 800);
+            } else {
+                statusText.innerText = 'Start Capture';
+                playIcon.className = 'fa-solid fa-play text-xs';
+                toggleBtn.className = 'bg-kali-green/20 border border-kali-green/40 text-kali-green px-2.5 py-1 rounded flex items-center space-x-1 font-mono';
+                clearInterval(wsInterval);
+            }
+        }
+
+        function inspectWiresharkPacket(no, proto) {
+            document.getElementById('ws-packet-details').innerHTML = `
+<div class="text-kali-cyan font-bold">Frame ${no}: Packet Capture Payload Data</div>
+<div>Ethernet II, Src: 08:00:27:4e:66:a1, Dst: 00:50:56:aa:bb:cc</div>
+<div>Internet Protocol Version 4, Src: 10.10.14.88, Dst: 10.10.10.5</div>
+<div>Transmission Control Protocol, Src Port: 44382, Dst Port: 80</div>
+<div class="text-kali-green mt-1">Hypertext Transfer Protocol: GET /login.php HTTP/1.1</div>
+`;
+        }
+
+        function applyWiresharkFilter() {
+            const filter = document.getElementById('ws-filter').value.toLowerCase().trim();
+            const rows = document.querySelectorAll('#ws-packet-table tr');
+            rows.forEach(r => {
+                const proto = r.getAttribute('data-proto');
+                if (!filter || (proto && proto.includes(filter))) {
+                    r.style.display = '';
+                } else {
+                    r.style.display = 'none';
+                }
+            });
+        }
+
+        // Burp Suite CE Interceptor Simulator
+        let isBurpInterceptOn = true;
+
+        function toggleBurpIntercept() {
+            isBurpInterceptOn = !isBurpInterceptOn;
+            const btn = document.getElementById('burp-intercept-toggle');
+            if (isBurpInterceptOn) {
+                btn.innerText = 'Intercept IS ON';
+                btn.className = 'bg-red-600 hover:bg-red-700 text-white font-bold px-3 py-1 rounded';
+            } else {
+                btn.innerText = 'Intercept IS OFF';
+                btn.className = 'bg-gray-700 hover:bg-gray-600 text-gray-300 font-bold px-3 py-1 rounded';
+            }
+        }
+
+        function forwardBurpPacket() {
+            playSuccessSound();
+            document.getElementById('burp-resp-body').innerHTML = `HTTP/1.1 200 OK
+Server: Apache/2.2.8 (Ubuntu)
+Set-Cookie: PHPSESSID=9a8f2b1c3d4e5f
+
+<html>
+ <body>
+  <h1 style="color:green">AUTHENTICATION SUCCESSFUL!</h1>
+  <p>FLAG{sql_injection_master_2026}</p>
+ </body>
+</html>`;
+        }
+
+        function dropBurpPacket() {
+            document.getElementById('burp-resp-body').innerText = '[+] Request dropped by client proxy.';
+        }
+
+        function switchBurpTab(tab) {
+            if (tab === 'interceptor') {
+                document.getElementById('burp-interceptor-tab').classList.remove('hidden');
+                document.getElementById('burp-repeater-tab').classList.add('hidden');
+                document.getElementById('tab-btn-interceptor').className = 'px-3 py-1.5 bg-kali-panel text-orange-400 font-bold border-t-2 border-orange-400 rounded-t';
+                document.getElementById('tab-btn-repeater').className = 'px-3 py-1.5 text-gray-400 hover:text-white rounded-t';
+            } else {
+                document.getElementById('burp-interceptor-tab').classList.add('hidden');
+                document.getElementById('burp-repeater-tab').classList.remove('hidden');
+                document.getElementById('tab-btn-repeater').className = 'px-3 py-1.5 bg-kali-panel text-orange-400 font-bold border-t-2 border-orange-400 rounded-t';
+                document.getElementById('tab-btn-interceptor').className = 'px-3 py-1.5 text-gray-400 hover:text-white rounded-t';
+            }
+        }
+
+        function sendBurpRepeater() {
+            document.getElementById('repeater-resp').innerText = `HTTP/1.1 200 OK\nDate: Mon, 05 Oct 2026\nServer: Apache/2.2.8\n\n[Admin Dashboard Data Loaded Successfully]`;
+        }
+
+        // CTF Flag Validation System
+        function submitFlag() {
+            const input = document.getElementById('flag-input').value.trim();
+            const feedback = document.getElementById('flag-feedback');
+
+            if (ctfFlags[input]) {
+                if (ctfFlags[input].claimed) {
+                    feedback.className = 'mt-1 text-[11px] font-mono text-kali-yellow';
+                    feedback.innerText = 'Flag already submitted previously!';
+                } else {
+                    ctfFlags[input].claimed = true;
+                    ctfScore += ctfFlags[input].pts;
+                    document.getElementById('ctf-score').innerText = `${ctfScore} / 300 pts`;
+                    document.getElementById('ctf-progress').style.width = `${(ctfScore / 300) * 100}%`;
+                    feedback.className = 'mt-1 text-[11px] font-mono text-kali-green font-bold';
+                    feedback.innerText = `[+] CORRECT FLAG! +${ctfFlags[input].pts} pts awarded!`;
+                    playSuccessSound();
+                }
+            } else {
+                feedback.className = 'mt-1 text-[11px] font-mono text-kali-red';
+                feedback.innerText = '[-] Invalid Flag. Keep investigating targets!';
+            }
+        }
+
+        // Leafpad Virtual Filesystem Logic
+        function saveVirtualFile() {
+            const content = document.getElementById('editor-textarea').value;
+            virtualFileSystem['exploit.py'] = content;
+            alert("File 'exploit.py' saved to virtual root filesystem.");
+        }
+
+        function runEditorScriptInTerminal() {
+            launchApp('terminal', 'python3 exploit.py');
+        }
+
+        // Initialize App States
+        window.onload = function() {
+            updateWorkspaceBar();
+            focusTerminalInput();
+        };
+    </script>
+</body>
+</html>
