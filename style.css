@@ -169,3 +169,26 @@ footer {
         font-size: 27px;
     }
 }
+
+/* Hero Button */
+
+.hero-button {
+    display: inline-block;
+    margin-top: 25px;
+    padding: 12px 25px;
+
+    background: #2563eb;
+    color: white;
+
+    text-decoration: none;
+    font-weight: bold;
+
+    border-radius: 6px;
+
+    transition: 0.3s;
+}
+
+.hero-button:hover {
+    background: #1d4ed8;
+    transform: translateY(-2px);
+}
