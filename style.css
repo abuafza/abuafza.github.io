@@ -170,29 +170,6 @@ footer {
     }
 }
 
-/* Hero Button */
-
-.hero-button {
-    display: inline-block;
-    margin-top: 25px;
-    padding: 12px 25px;
-
-    background: #2563eb;
-    color: white;
-
-    text-decoration: none;
-    font-weight: bold;
-
-    border-radius: 6px;
-
-    transition: 0.3s;
-}
-
-.hero-button:hover {
-    background: #1d4ed8;
-    transform: translateY(-2px);
-}
-
 /* Certifications */
 
 .certifications-grid {
@@ -285,4 +262,124 @@ footer {
 
 .project-button:hover {
     background: #1d4ed8;
+}
+/* Contact */
+
+.contact-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-top: 25px;
+}
+
+.contact-button {
+    display: inline-block;
+    padding: 12px 24px;
+
+    background: #2563eb;
+    color: white;
+
+    text-decoration: none;
+    font-weight: bold;
+
+    border-radius: 6px;
+
+    transition: 0.3s;
+}
+
+.contact-button:hover {
+    background: #1d4ed8;
+    transform: translateY(-2px);
+}
+/* Hero Section */
+
+.hero {
+    min-height: 600px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    text-align: center;
+
+    padding: 80px 20px;
+
+    background:
+        radial-gradient(circle at top, #172554, #0b1120 65%);
+}
+
+.hero-content {
+    max-width: 850px;
+}
+
+.hero-label {
+    color: #60a5fa;
+    font-size: 14px;
+    font-weight: bold;
+    letter-spacing: 3px;
+    margin-bottom: 20px;
+}
+
+.hero h1 {
+    font-size: 64px;
+    margin-bottom: 5px;
+}
+
+.hero h2 {
+    border: none;
+    padding: 0;
+    margin-bottom: 15px;
+
+    color: #93c5fd;
+    font-size: 32px;
+}
+
+.hero-description {
+    font-size: 20px;
+    color: #bfdbfe;
+    margin-bottom: 20px;
+}
+
+.hero-intro {
+    max-width: 700px;
+    margin: 0 auto 30px;
+    font-size: 17px;
+    color: #cbd5e1;
+}
+
+.hero-buttons {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.hero-button {
+    display: inline-block;
+
+    padding: 13px 25px;
+
+    background: #2563eb;
+    color: white;
+
+    text-decoration: none;
+    font-weight: bold;
+
+    border-radius: 6px;
+
+    transition: 0.3s;
+}
+
+.hero-button:hover {
+    background: #1d4ed8;
+    transform: translateY(-3px);
+}
+
+.hero-button.secondary {
+    background: transparent;
+    border: 1px solid #3b82f6;
+}
+
+.hero-button.secondary:hover {
+    background: #172554;
 }
