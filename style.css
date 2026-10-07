@@ -192,3 +192,33 @@ footer {
     background: #1d4ed8;
     transform: translateY(-2px);
 }
+
+/* Certifications */
+
+.certifications-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+}
+
+.certification-card {
+    background: #111827;
+    padding: 25px;
+    border-radius: 10px;
+    border: 1px solid #1e3a8a;
+    transition: 0.3s;
+}
+
+.certification-card:hover {
+    transform: translateY(-5px);
+    border-color: #3b82f6;
+}
+
+.certification-card h3 {
+    color: #93c5fd;
+    margin-bottom: 10px;
+}
+
+.certification-card p {
+    color: #cbd5e1;
+}
