@@ -1,0 +1,171 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: Arial, Helvetica, sans-serif;
+    background: #0b1120;
+    color: #e5e7eb;
+    line-height: 1.6;
+}
+
+/* Header */
+
+header {
+    text-align: center;
+    padding: 100px 20px 70px;
+    background: linear-gradient(135deg, #111827, #172554);
+}
+
+header h1 {
+    font-size: 56px;
+    margin-bottom: 10px;
+    color: #ffffff;
+}
+
+header p {
+    font-size: 20px;
+    color: #93c5fd;
+}
+
+/* Navigation */
+
+nav {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+
+    padding: 18px;
+    background: #111827;
+    border-bottom: 1px solid #1e3a8a;
+}
+
+nav a {
+    color: #dbeafe;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+nav a:hover {
+    color: #60a5fa;
+}
+
+/* Main content */
+
+main {
+    max-width: 1000px;
+    margin: auto;
+    padding: 60px 20px;
+}
+
+section {
+    margin-bottom: 70px;
+}
+
+h2 {
+    font-size: 32px;
+    margin-bottom: 20px;
+    color: #60a5fa;
+    border-left: 4px solid #3b82f6;
+    padding-left: 12px;
+}
+
+p {
+    color: #cbd5e1;
+}
+
+/* Skills */
+
+ul {
+    list-style: none;
+
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 15px;
+}
+
+li {
+    background: #111827;
+    padding: 18px;
+    border: 1px solid #1e3a8a;
+    border-radius: 8px;
+    transition: 0.3s;
+}
+
+li:hover {
+    transform: translateY(-4px);
+    border-color: #3b82f6;
+}
+
+/* Projects */
+
+.project {
+    background: #111827;
+    padding: 25px;
+    margin-bottom: 20px;
+    border-radius: 10px;
+    border: 1px solid #1e3a8a;
+    transition: 0.3s;
+}
+
+.project:hover {
+    transform: translateY(-5px);
+    border-color: #3b82f6;
+}
+
+.project h3 {
+    color: #93c5fd;
+    margin-bottom: 10px;
+}
+
+/* Links */
+
+a {
+    color: #60a5fa;
+}
+
+a:hover {
+    color: #93c5fd;
+}
+
+/* Footer */
+
+footer {
+    text-align: center;
+    padding: 30px;
+    background: #060b16;
+    color: #64748b;
+    border-top: 1px solid #1e3a8a;
+}
+
+/* Mobile */
+
+@media (max-width: 600px) {
+
+    header h1 {
+        font-size: 40px;
+    }
+
+    header p {
+        font-size: 16px;
+    }
+
+    nav {
+        gap: 15px;
+        flex-wrap: wrap;
+    }
+
+    h2 {
+        font-size: 27px;
+    }
+}
